@@ -1,0 +1,135 @@
+// Include necessary libraries
+
+#include <WiFi.h>
+
+#include <BlynkSimpleEsp32.h>
+
+#include <Servo.h>
+
+
+
+// Replace with your Blynk credentials
+
+char auth[] = "2938ryhsnseor8g38g;zsof";
+
+char ssid[] = "IPHONE";
+
+char pass[] = "123456789";
+
+
+
+// Define IR sensor and servo motor pins
+
+#define IR_SENSOR_PIN 13  // GPIO pin connected to IR sensor
+
+#define SERVO_PIN 14      // GPIO pin connected to servo motor
+
+
+
+Servo myServo;
+
+
+
+// Feeding system state variables
+
+bool petDetected = false;
+
+bool feedDispensed = false;
+
+unsigned long lastFeedTime = 0;
+
+const unsigned long feedInterval = 3600000; // 1 hour in milliseconds
+
+
+
+void setup() {
+
+  // Initialize serial communication
+
+  Serial.begin(115200);
+
+
+
+  // Initialize IR sensor pin as input
+
+  pinMode(IR_SENSOR_PIN, INPUT);
+
+
+
+  // Attach servo motor to the defined pin
+
+  myServo.attach(SERVO_PIN);
+
+  myServo.write(0); // Close feed reservoir initially
+
+
+
+  // Connect to Wi-Fi and Blynk
+
+  Blynk.begin(auth, ssid, pass);
+
+  Serial.println("System Initialized.");
+
+}
+
+
+
+void loop() {
+
+  Blynk.run();
+
+
+
+  // Read IR sensor state
+
+  petDetected = digitalRead(IR_SENSOR_PIN);
+
+
+
+  // Check if the pet is detected and feeding is not recently dispensed
+
+  if (petDetected && !feedDispensed && millis() - lastFeedTime > feedInterval) {
+
+    Serial.println("Pet detected. Dispensing food...");
+
+
+
+    // Open feed reservoir
+
+    myServo.write(90); // Adjust angle as necessary for your system
+
+    delay(3000);       // Keep it open for 3 seconds
+
+
+
+    // Close feed reservoir
+
+    myServo.write(0);
+
+
+
+    // Update state variables
+
+    feedDispensed = true;
+
+    lastFeedTime = millis();
+
+
+
+    // Notify the owner via Blynk
+
+    Blynk.notify("Pet has been fed.");
+
+  }
+
+
+
+  // Reset feedDispensed state after the pet leaves
+
+  if (!petDetected) {
+
+    feedDispensed = false;
+
+  }
+
+}
